@@ -177,6 +177,7 @@ async function launchExtension() {
   const extensionPath = path.resolve("dist")
   const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), "wedge-e2e-"))
   const context = await chromium.launchPersistentContext(userDataDir, {
+    channel: "chrome",
     headless: false,
     ignoreDefaultArgs: ["--disable-extensions"],
     args: [`--disable-extensions-except=${extensionPath}`, `--load-extension=${extensionPath}`],
