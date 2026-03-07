@@ -1,0 +1,16 @@
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="wedge-brand" x1="14" y1="12" x2="106" y2="110" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#4C84F7" />
+      <stop offset="1" stop-color="#2152BF" />
+    </linearGradient>
+  </defs>
+  <rect x="12" y="12" width="104" height="104" rx="38" fill="url(#wedge-brand)" />
+  <path
+    d="M44 43H80C85.5228 43 90 47.4772 90 53V68C90 73.5228 85.5228 78 80 78H63L51 90V78H44C38.4772 78 34 73.5228 34 68V53C34 47.4772 38.4772 43 44 43Z"
+    fill="#F9FBFF"
+  />
+  <path d="M54 58H72" stroke="#2152BF" stroke-width="7" stroke-linecap="round" />
+  <path d="M54 48.5H77" stroke="#2152BF" stroke-width="7" stroke-linecap="round" />
+  <path d="M54 67.5H66" stroke="#2152BF" stroke-width="7" stroke-linecap="round" />
+</svg>
