@@ -740,6 +740,7 @@ function WebhooksIndexView({
                 </button>
                 <Textarea
                   aria-invalid={Boolean(importError) || undefined}
+                  aria-label="Import webhook JSON"
                   onChange={(event) => onImportTextChange(event.currentTarget.value)}
                   placeholder='Paste {"webhooks": [...]} JSON here'
                   rows={6}
