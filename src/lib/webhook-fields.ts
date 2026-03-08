@@ -1,23 +1,13 @@
+import { randomId } from "./storage"
 import type {
   BuiltinFieldKey,
   CustomFieldType,
-  MatrixFieldValue,
   PageSnapshot,
   WebhookField,
   WebhookFieldDraft,
   WebhookFieldValue,
   WebhookFormValues,
 } from "./types"
-
-function createId() {
-  if (crypto.randomUUID) {
-    return crypto.randomUUID()
-  }
-
-  const bytes = new Uint8Array(16)
-  crypto.getRandomValues(bytes)
-  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("")
-}
 
 type BuiltinFieldDefinition = {
   builtinKey: BuiltinFieldKey
@@ -88,19 +78,10 @@ export const CUSTOM_FIELD_TYPE_LABELS: Record<CustomFieldType, string> = {
   long_text: "Long text",
   number: "Number",
   email: "Email",
-  phone: "Phone number",
   link: "URL",
-  signature: "Electronic signature",
-  multiple_choice: "Multiple choice",
-  dropdown: "Select",
-  checkbox: "Checkbox",
-  multi_select: "Multi-select",
-  matrix: "Matrix",
   date: "Date",
-  time: "Time",
-  rating: "Rating",
-  linear_scale: "Linear scale",
-  ranking: "Ranking",
+  checkbox: "Checkbox",
+  dropdown: "Select",
 }
 
 export function createDefaultWebhookFields() {
@@ -115,7 +96,7 @@ export function createBuiltinField(builtinKey: BuiltinFieldKey): WebhookFieldDra
   const template = BUILTIN_FIELD_DEFINITIONS[builtinKey]
 
   return {
-    id: createId(),
+    id: randomId(),
     type: "builtin",
     builtinKey,
     key: template.key,
@@ -129,7 +110,7 @@ export function createCustomField(
   existingFields: WebhookField[]
 ): WebhookFieldDraft {
   const base = {
-    id: createId(),
+    id: randomId(),
     key: getNextCustomFieldKey(existingFields, type),
     label: CUSTOM_FIELD_TYPE_LABELS[type],
     required: false,
@@ -140,13 +121,9 @@ export function createCustomField(
     case "long_text":
     case "number":
     case "email":
-    case "phone":
     case "link":
-    case "signature":
     case "date":
-    case "time":
       return { ...base, type, defaultValue: "" }
-    case "multiple_choice":
     case "dropdown":
       return {
         ...base,
@@ -156,45 +133,6 @@ export function createCustomField(
       }
     case "checkbox":
       return { ...base, type, defaultValue: false }
-    case "multi_select":
-      return {
-        ...base,
-        type,
-        options: ["Option 1", "Option 2", "Option 3"],
-        defaultValue: [],
-      }
-    case "matrix":
-      return {
-        ...base,
-        type,
-        rows: ["Statement 1", "Statement 2"],
-        columns: ["Strongly disagree", "Neutral", "Strongly agree"],
-        defaultValue: {},
-      }
-    case "rating":
-      return {
-        ...base,
-        type,
-        max: 5,
-        defaultValue: "",
-      }
-    case "linear_scale":
-      return {
-        ...base,
-        type,
-        min: 1,
-        max: 5,
-        minLabel: "Low",
-        maxLabel: "High",
-        defaultValue: "",
-      }
-    case "ranking":
-      return {
-        ...base,
-        type,
-        options: ["Option 1", "Option 2", "Option 3"],
-        defaultValue: ["Option 1", "Option 2", "Option 3"],
-      }
   }
 }
 
@@ -230,21 +168,6 @@ export function getInitialValueForField(field: WebhookField, page: PageSnapshot)
     return getBuiltinFieldValue(field.builtinKey, page)
   }
 
-  if (field.type === "checkbox") {
-    return field.defaultValue
-  }
-
-  if (
-    field.type === "multi_select" ||
-    field.type === "ranking"
-  ) {
-    return [...field.defaultValue]
-  }
-
-  if (field.type === "matrix") {
-    return { ...field.defaultValue }
-  }
-
   return field.defaultValue
 }
 
@@ -263,29 +186,7 @@ export function buildPayloadFromValues(fields: WebhookField[], values: WebhookFo
         return [field.key, typeof value === "boolean" ? value : false]
       }
 
-      if (
-        field.type === "multi_select" ||
-        field.type === "ranking"
-      ) {
-        return [field.key, Array.isArray(value) ? value : []]
-      }
-
-      if (field.type === "matrix") {
-        const matrixValue = isMatrixFieldValue(value) ? value : {}
-
-        return [
-          field.key,
-          Object.fromEntries(
-            field.rows.map((row) => [toSnakeCase(row), matrixValue[row] ?? ""])
-          ),
-        ]
-      }
-
-      if (
-        field.type === "number" ||
-        field.type === "rating" ||
-        field.type === "linear_scale"
-      ) {
+      if (field.type === "number") {
         const normalizedValue = typeof value === "string" ? value.trim() : ""
         return [field.key, normalizedValue.length > 0 ? Number(normalizedValue) : ""]
       }
@@ -312,26 +213,6 @@ export function validateWebhookForm(fields: WebhookField[], values: WebhookFormV
       continue
     }
 
-    if (
-      field.type === "multi_select" ||
-      field.type === "ranking"
-    ) {
-      if (!Array.isArray(value) || value.length === 0) {
-        errors[field.id] = `Select at least one option for ${field.label}.`
-      }
-      continue
-    }
-
-    if (field.type === "matrix") {
-      const matrixValue = isMatrixFieldValue(value) ? value : {}
-      const missingRow = field.rows.find((row) => !matrixValue[row] || matrixValue[row].trim().length === 0)
-
-      if (missingRow) {
-        errors[field.id] = `Complete every row in ${field.label}.`
-      }
-      continue
-    }
-
     if (typeof value !== "string" || value.trim().length === 0) {
       errors[field.id] = `${field.label} is required.`
     }
@@ -349,37 +230,15 @@ export function getUnusedBuiltinKeys(fields: WebhookField[]) {
 }
 
 export function cloneFieldDraft(field: WebhookFieldDraft): WebhookFieldDraft {
-  if (
-    field.type === "multi_select" ||
-    field.type === "ranking"
-  ) {
+  if (field.type === "dropdown") {
     return {
       ...field,
-      id: createId(),
-      defaultValue: [...field.defaultValue],
+      id: randomId(),
       options: [...field.options],
     }
   }
 
-  if (field.type === "multiple_choice" || field.type === "dropdown") {
-    return {
-      ...field,
-      id: createId(),
-      options: [...field.options],
-    }
-  }
-
-  if (field.type === "matrix") {
-    return {
-      ...field,
-      id: createId(),
-      rows: [...field.rows],
-      columns: [...field.columns],
-      defaultValue: { ...field.defaultValue },
-    }
-  }
-
-  return { ...field, id: createId() }
+  return { ...field, id: randomId() }
 }
 
 export function getFieldTypeLabel(field: WebhookField) {
@@ -403,6 +262,3 @@ export function toSnakeCase(input: string) {
     .replace(/^_+|_+$/g, "")
 }
 
-function isMatrixFieldValue(value: WebhookFieldValue | undefined): value is MatrixFieldValue {
-  return Boolean(value) && typeof value === "object" && !Array.isArray(value)
-}

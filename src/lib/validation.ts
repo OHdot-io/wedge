@@ -8,8 +8,6 @@ import { parseAndValidateUrl, randomId } from "./storage"
 import type {
   BasicFieldType,
   BuiltinFieldKey,
-  ChoiceMultiFieldType,
-  ChoiceSingleFieldType,
   WebhookConfig,
   WebhookDraft,
   WebhookField,
@@ -21,21 +19,9 @@ const BASIC_FIELD_TYPES = [
   "long_text",
   "number",
   "email",
-  "phone",
   "link",
-  "signature",
   "date",
-  "time",
 ] as const satisfies readonly BasicFieldType[]
-
-const CHOICE_SINGLE_FIELD_TYPES = [
-  "multiple_choice",
-  "dropdown",
-] as const satisfies readonly ChoiceSingleFieldType[]
-
-const CHOICE_MULTI_FIELD_TYPES = [
-  "multi_select",
-] as const satisfies readonly ChoiceMultiFieldType[]
 
 const BUILTIN_FIELD_KEYS = [
   "url",
@@ -83,20 +69,12 @@ const basicFieldSchema = baseFieldSchema.extend({
   defaultValue: z.string(),
 })
 
-const singleChoiceFieldSchema = baseFieldSchema.extend({
-  type: z.enum(CHOICE_SINGLE_FIELD_TYPES),
+const dropdownFieldSchema = baseFieldSchema.extend({
+  type: z.literal("dropdown"),
   options: z
     .array(z.string().trim().min(1, "Option labels cannot be empty."))
     .min(1, "Add at least one option."),
   defaultValue: z.string(),
-})
-
-const multiChoiceFieldSchema = baseFieldSchema.extend({
-  type: z.enum(CHOICE_MULTI_FIELD_TYPES),
-  options: z
-    .array(z.string().trim().min(1, "Option labels cannot be empty."))
-    .min(1, "Add at least one option."),
-  defaultValue: z.array(z.string()),
 })
 
 const checkboxFieldSchema = baseFieldSchema.extend({
@@ -104,57 +82,11 @@ const checkboxFieldSchema = baseFieldSchema.extend({
   defaultValue: z.boolean(),
 })
 
-const matrixFieldSchema = baseFieldSchema.extend({
-  type: z.literal("matrix"),
-  rows: z
-    .array(z.string().trim().min(1, "Row labels cannot be empty."))
-    .min(1, "Add at least one matrix row."),
-  columns: z
-    .array(z.string().trim().min(1, "Column labels cannot be empty."))
-    .min(1, "Add at least one matrix column."),
-  defaultValue: z.record(z.string(), z.string()),
-})
-
-const ratingFieldSchema = baseFieldSchema.extend({
-  type: z.literal("rating"),
-  max: z
-    .number()
-    .int("Rating must be a whole number.")
-    .min(2, "Use at least 2 rating steps.")
-    .max(10, "Keep ratings at 10 steps or fewer."),
-  defaultValue: z.string(),
-})
-
-const linearScaleFieldSchema = baseFieldSchema.extend({
-  type: z.literal("linear_scale"),
-  min: z.number().int("Scale minimum must be a whole number."),
-  max: z.number().int("Scale maximum must be a whole number."),
-  minLabel: z.string(),
-  maxLabel: z.string(),
-  defaultValue: z.string(),
-}).refine((value) => value.max > value.min, {
-  message: "Scale maximum must be greater than the minimum.",
-  path: ["max"],
-})
-
-const rankingFieldSchema = baseFieldSchema.extend({
-  type: z.literal("ranking"),
-  options: z
-    .array(z.string().trim().min(1, "Option labels cannot be empty."))
-    .min(2, "Add at least two ranking options."),
-  defaultValue: z.array(z.string()),
-})
-
 const webhookFieldSchema = z.discriminatedUnion("type", [
   builtinFieldSchema,
   basicFieldSchema,
-  singleChoiceFieldSchema,
-  multiChoiceFieldSchema,
+  dropdownFieldSchema,
   checkboxFieldSchema,
-  matrixFieldSchema,
-  ratingFieldSchema,
-  linearScaleFieldSchema,
-  rankingFieldSchema,
 ])
 
 const webhookConfigSchema = z.object({
@@ -380,7 +312,7 @@ function normalizeFieldDefaults(field: WebhookField): WebhookField {
     }
   }
 
-  if (field.type === "multiple_choice" || field.type === "dropdown") {
+  if (field.type === "dropdown") {
     const options = dedupeOptions(field.options)
 
     return {
@@ -400,111 +332,11 @@ function normalizeFieldDefaults(field: WebhookField): WebhookField {
     }
   }
 
-  if (field.type === "multi_select") {
-    const options = dedupeOptions(field.options)
-
-    return {
-      ...field,
-      key: normalizedKey,
-      label: field.label.trim(),
-      options,
-      defaultValue: field.defaultValue.filter((value) => options.includes(value)),
-    }
-  }
-
-  if (field.type === "matrix") {
-    const rows = dedupeOptions(field.rows)
-    const columns = dedupeOptions(field.columns)
-    const defaultValue = Object.fromEntries(
-      rows.map((row) => {
-        const selectedValue = field.defaultValue[row]
-        return [row, columns.includes(selectedValue) ? selectedValue : ""]
-      })
-    )
-
-    return {
-      ...field,
-      key: normalizedKey,
-      label: field.label.trim(),
-      rows,
-      columns,
-      defaultValue,
-    }
-  }
-
-  if (field.type === "rating") {
-    const max = clampInteger(field.max, 2, 10)
-    const defaultValue = normalizeScaleDefault(field.defaultValue, 1, max)
-
-    return {
-      ...field,
-      key: normalizedKey,
-      label: field.label.trim(),
-      max,
-      defaultValue,
-    }
-  }
-
-  if (field.type === "linear_scale") {
-    const min = Math.round(field.min)
-    const max = Math.round(field.max)
-    const defaultValue = normalizeScaleDefault(field.defaultValue, min, max)
-
-    return {
-      ...field,
-      key: normalizedKey,
-      label: field.label.trim(),
-      min,
-      max,
-      minLabel: field.minLabel.trim(),
-      maxLabel: field.maxLabel.trim(),
-      defaultValue,
-    }
-  }
-
-  if (field.type === "ranking") {
-    const options = dedupeOptions(field.options)
-    const seen = new Set<string>()
-    const orderedDefaults = field.defaultValue
-      .filter((value) => options.includes(value))
-      .filter((value) => {
-        if (seen.has(value)) {
-          return false
-        }
-
-        seen.add(value)
-        return true
-      })
-    const missingDefaults = options.filter((option) => !seen.has(option))
-
-    return {
-      ...field,
-      key: normalizedKey,
-      label: field.label.trim(),
-      options,
-      defaultValue: [...orderedDefaults, ...missingDefaults],
-    }
-  }
-
   return field
 }
 
 function normalizeBuiltinKey(builtinKey: BuiltinFieldKey, key: string) {
   return toSnakeCase(key) || BUILTIN_FIELD_DEFINITIONS[builtinKey].key
-}
-
-function normalizeScaleDefault(value: string, min: number, max: number) {
-  const normalized = Number(value.trim())
-
-  if (!Number.isFinite(normalized) || normalized < min || normalized > max) {
-    return ""
-  }
-
-  return String(Math.round(normalized))
-}
-
-function clampInteger(value: number, min: number, max: number) {
-  return Math.min(max, Math.max(min, Math.round(value)))
 }
 
 function isBasicField(
@@ -517,11 +349,8 @@ function isBasicField(
       | "long_text"
       | "number"
       | "email"
-      | "phone"
       | "link"
-      | "signature"
       | "date"
-      | "time"
   }
 > {
   return (
@@ -529,11 +358,8 @@ function isBasicField(
     field.type === "long_text" ||
     field.type === "number" ||
     field.type === "email" ||
-    field.type === "phone" ||
     field.type === "link" ||
-    field.type === "signature" ||
-    field.type === "date" ||
-    field.type === "time"
+    field.type === "date"
   )
 }
 

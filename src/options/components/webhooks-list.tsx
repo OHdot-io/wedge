@@ -133,7 +133,7 @@ export function WebhooksList({
                     <SortableRow
                       key={webhook.id}
                       webhook={webhook}
-                      isDefault={webhooks.indexOf(webhook) === 0}
+                      isDefault={webhook.isDefault}
                       isFiltering={isFiltering}
                       onEdit={onEdit}
                       onDelete={onDelete}

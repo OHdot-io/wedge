@@ -364,11 +364,8 @@ function normalizeField(value: unknown): WebhookField | null {
     type === "long_text" ||
     type === "number" ||
     type === "email" ||
-    type === "phone" ||
     type === "link" ||
-    type === "signature" ||
-    type === "date" ||
-    type === "time"
+    type === "date"
   ) {
     return {
       id,
@@ -380,7 +377,7 @@ function normalizeField(value: unknown): WebhookField | null {
     }
   }
 
-  if (type === "multiple_choice" || type === "dropdown" || type === "single_select") {
+  if (type === "dropdown" || type === "single_select") {
     const options = asStringArray(item.options)
 
     if (options.length === 0) {
@@ -389,7 +386,7 @@ function normalizeField(value: unknown): WebhookField | null {
 
     return {
       id,
-      type: type === "single_select" ? "dropdown" : type,
+      type: "dropdown",
       key,
       label,
       required,
@@ -406,96 +403,6 @@ function normalizeField(value: unknown): WebhookField | null {
       label,
       required,
       defaultValue: typeof item.defaultValue === "boolean" ? item.defaultValue : false,
-    }
-  }
-
-  if (type === "multi_select") {
-    const options = asStringArray(item.options)
-
-    if (options.length === 0) {
-      return null
-    }
-
-    return {
-      id,
-      type,
-      key,
-      label,
-      required,
-      options,
-      defaultValue: asStringArray(item.defaultValue),
-    }
-  }
-
-  if (type === "matrix") {
-    const rows = asStringArray(item.rows)
-    const columns = asStringArray(item.columns)
-
-    if (rows.length === 0 || columns.length === 0) {
-      return null
-    }
-
-    return {
-      id,
-      type,
-      key,
-      label,
-      required,
-      rows,
-      columns,
-      defaultValue: asStringRecord(item.defaultValue),
-    }
-  }
-
-  if (type === "rating") {
-    return {
-      id,
-      type,
-      key,
-      label,
-      required,
-      max: asPositiveInt(item.max, 5),
-      defaultValue: asString(item.defaultValue),
-    }
-  }
-
-  if (type === "linear_scale") {
-    const min = asNumber(item.min, 1)
-    const max = asNumber(item.max, 5)
-
-    if (max <= min) {
-      return null
-    }
-
-    return {
-      id,
-      type,
-      key,
-      label,
-      required,
-      min,
-      max,
-      minLabel: asString(item.minLabel),
-      maxLabel: asString(item.maxLabel),
-      defaultValue: asString(item.defaultValue),
-    }
-  }
-
-  if (type === "ranking") {
-    const options = asStringArray(item.options)
-
-    if (options.length === 0) {
-      return null
-    }
-
-    return {
-      id,
-      type,
-      key,
-      label,
-      required,
-      options,
-      defaultValue: asStringArray(item.defaultValue),
     }
   }
 
@@ -591,18 +498,6 @@ function asStringArray(value: unknown) {
     .filter((item) => item.length > 0)
 }
 
-function asStringRecord(value: unknown) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return {}
-  }
-
-  return Object.fromEntries(
-    Object.entries(value)
-      .filter(([, item]) => typeof item === "string")
-      .map(([key, item]) => [key, item])
-  )
-}
-
 function asIsoDate(value: unknown) {
   if (typeof value === "string" && !Number.isNaN(Date.parse(value))) {
     return value
@@ -641,15 +536,6 @@ function asBuiltinFieldKey(value: unknown) {
   }
 
   return undefined
-}
-
-function asNumber(value: unknown, fallback: number) {
-  return typeof value === "number" && Number.isFinite(value) ? value : fallback
-}
-
-function asPositiveInt(value: unknown, fallback: number) {
-  const nextValue = asNumber(value, fallback)
-  return Math.max(1, Math.round(nextValue))
 }
 
 function asTestStatus(value: unknown): TestStatus | undefined {

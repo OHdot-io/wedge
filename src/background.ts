@@ -15,13 +15,19 @@ chrome.runtime.onMessage.addListener((message: BackgroundRequest, sender, sendRe
     return false
   }
 
+  const fallbackError: BackgroundResponse = {
+    ok: false,
+    error: "Something went wrong. Close and reopen the extension.",
+    errorCode: "NETWORK_ERROR",
+  }
+
   if (message.type === "wedge/send") {
-    void handleSend(message).then(sendResponse)
+    void handleSend(message).then(sendResponse).catch(() => sendResponse(fallbackError))
     return true
   }
 
   if (message.type === "wedge/test-webhook") {
-    void handleTestWebhook(message.webhookId).then(sendResponse)
+    void handleTestWebhook(message.webhookId).then(sendResponse).catch(() => sendResponse(fallbackError))
     return true
   }
 
@@ -86,7 +92,7 @@ async function deliverAndTrack(input: DeliveryInput): Promise<BackgroundResponse
     parseAndValidateUrl(input.webhook.webhookUrl)
   } catch (error) {
     const message = error instanceof Error ? error.message : "Invalid webhook URL."
-    await pushHistory(
+    await safeRecordHistory(
       createHistoryEntry({
         webhook: input.webhook,
         status: "error",
@@ -105,7 +111,7 @@ async function deliverAndTrack(input: DeliveryInput): Promise<BackgroundResponse
 
   if (body.length > 1_000_000) {
     const message = "Payload is too large (over 1 MB). Reduce the data before sending."
-    await pushHistory(
+    await safeRecordHistory(
       createHistoryEntry({
         webhook: input.webhook,
         status: "error",
@@ -138,15 +144,21 @@ async function deliverAndTrack(input: DeliveryInput): Promise<BackgroundResponse
       headers,
       body,
       signal: controller.signal,
+      credentials: "omit",
     })
 
     clearTimeout(timeoutId)
 
-    const responseSnippet = await readResponseSnippet(response, 200)
+    let responseSnippet = ""
+    try {
+      responseSnippet = await readResponseSnippet(response, 200)
+    } catch {
+      // Response body read failed — not critical, continue with empty snippet.
+    }
 
     if (!response.ok) {
       const message = `Webhook returned ${response.status}. Check the webhook URL and token.`
-      await pushHistory(
+      await safeRecordHistory(
         createHistoryEntry({
           webhook: input.webhook,
           status: "error",
@@ -166,9 +178,15 @@ async function deliverAndTrack(input: DeliveryInput): Promise<BackgroundResponse
       }
     }
 
-    const now = new Date().toISOString()
-    await markWebhookUsed(input.webhook.id, now)
-    await pushHistory(
+    // Webhook accepted — record success. Bookkeeping failures must not
+    // change the response since the data was already delivered.
+    try {
+      const now = new Date().toISOString()
+      await markWebhookUsed(input.webhook.id, now)
+    } catch {
+      // Storage write failed — non-critical.
+    }
+    await safeRecordHistory(
       createHistoryEntry({
         webhook: input.webhook,
         status: "sent",
@@ -192,7 +210,7 @@ async function deliverAndTrack(input: DeliveryInput): Promise<BackgroundResponse
         ? `Network error: ${error.message}`
         : "Network error while sending to the webhook."
 
-    await pushHistory(
+    await safeRecordHistory(
       createHistoryEntry({
         webhook: input.webhook,
         status: "error",
@@ -210,6 +228,14 @@ async function deliverAndTrack(input: DeliveryInput): Promise<BackgroundResponse
       error: message,
       errorCode: "NETWORK_ERROR",
     }
+  }
+}
+
+async function safeRecordHistory(entry: HistoryEntry) {
+  try {
+    await pushHistory(entry)
+  } catch {
+    // Storage write failed — non-critical, don't let it change the delivery result.
   }
 }
 

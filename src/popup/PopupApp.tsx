@@ -1,7 +1,5 @@
 import { startTransition, useEffect, useState } from "react"
 import {
-  ArrowDownIcon,
-  ArrowUpIcon,
   CheckCircle2Icon,
   ChevronDownIcon,
   GlobeIcon,
@@ -9,7 +7,6 @@ import {
   PlusIcon,
   SendHorizonalIcon,
   WebhookIcon,
-  StarIcon,
 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -26,12 +23,9 @@ import {
 } from "@/components/ui/empty"
 import {
   Field,
-  FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
-  FieldSet,
-  FieldLegend,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import {
@@ -46,7 +40,6 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Toaster } from "@/components/ui/sonner"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import type { BackgroundResponse } from "@/lib/messages"
 import { getAppState, getHostname, getUiState, saveUiState } from "@/lib/storage"
 import {
@@ -119,27 +112,36 @@ export function PopupApp() {
   async function load(preferredWebhookId?: string) {
     setIsLoading(true)
 
-    const [state, uiState, tab] = await Promise.all([getAppState(), getUiState(), getCurrentTab()])
-    const nextPageContext = await getPageContext(tab)
-    const nextPage = buildPageSnapshot(tab, nextPageContext)
-    const nextSelectedWebhookId =
-      preferredWebhookId ||
-      uiState.lastSelectedWebhookId ||
-      state.webhooks.find((webhook) => webhook.isDefault)?.id ||
-      state.webhooks[0]?.id ||
-      ""
-    const nextWebhook =
-      state.webhooks.find((webhook) => webhook.id === nextSelectedWebhookId) ?? null
+    try {
+      const [state, uiState, tab] = await Promise.all([getAppState(), getUiState(), getCurrentTab()])
+      const nextPageContext = await getPageContext(tab)
+      const nextPage = buildPageSnapshot(tab, nextPageContext)
+      const nextSelectedWebhookId =
+        preferredWebhookId ||
+        uiState.lastSelectedWebhookId ||
+        state.webhooks.find((webhook) => webhook.isDefault)?.id ||
+        state.webhooks[0]?.id ||
+        ""
+      const nextWebhook =
+        state.webhooks.find((webhook) => webhook.id === nextSelectedWebhookId) ?? null
 
-    startTransition(() => {
-      setAppState(state)
-      setCurrentTab(tab)
-      setPageContext(nextPageContext)
-      setSelectedWebhookId(nextSelectedWebhookId)
-      setFormValues(nextWebhook ? createInitialFormValues(nextWebhook.fields, nextPage) : {})
-      setInlineStatus(null)
+      startTransition(() => {
+        setAppState(state)
+        setCurrentTab(tab)
+        setPageContext(nextPageContext)
+        setSelectedWebhookId(nextSelectedWebhookId)
+        setFormValues(nextWebhook ? createInitialFormValues(nextWebhook.fields, nextPage) : {})
+        setInlineStatus(null)
+        setIsLoading(false)
+      })
+    } catch {
       setIsLoading(false)
-    })
+      setInlineStatus({
+        title: "Failed to load",
+        description: "Close and reopen the popup to try again.",
+        tone: "destructive",
+      })
+    }
   }
 
   async function handleSelectWebhook(value: string) {
@@ -172,40 +174,53 @@ export function PopupApp() {
     setIsSending(true)
     setInlineStatus(null)
 
-    const response = (await chrome.runtime.sendMessage({
-      type: "wedge/send",
-      webhookId: selectedWebhook.id,
-      payload: buildPayloadFromValues(selectedWebhook.fields, formValues),
-      pageTitle: page.title,
-      pageHostname: page.hostname,
-    })) as BackgroundResponse
+    try {
+      const response = (await chrome.runtime.sendMessage({
+        type: "wedge/send",
+        webhookId: selectedWebhook.id,
+        payload: buildPayloadFromValues(selectedWebhook.fields, formValues),
+        pageTitle: page.title,
+        pageHostname: page.hostname,
+      })) as BackgroundResponse | undefined
 
-    setIsSending(false)
+      setIsSending(false)
 
-    if (!response.ok) {
+      if (!response || !response.ok) {
+        const errorMessage = response?.error ?? "No response from background. Try reopening the popup."
+        setInlineStatus({
+          title: "Send failed",
+          description: errorMessage,
+          tone: "destructive",
+        })
+        toast.error("Send failed", {
+          description: errorMessage,
+        })
+        await load(selectedWebhook.id)
+        return
+      }
+
+      setInlineStatus({
+        title: "Sent to Clay",
+        description: response.responseSnippet
+          ? "The webhook accepted the payload."
+          : "The current page was delivered successfully.",
+        tone: "default",
+      })
+      toast.success("Sent to Clay", {
+        description: response.message,
+      })
+      await load(selectedWebhook.id)
+    } catch {
+      setIsSending(false)
       setInlineStatus({
         title: "Send failed",
-        description: response.error,
+        description: "Could not reach the background service. Try reopening the popup.",
         tone: "destructive",
       })
       toast.error("Send failed", {
-        description: response.error,
+        description: "Could not reach the background service.",
       })
-      await load(selectedWebhook.id)
-      return
     }
-
-    setInlineStatus({
-      title: "Sent to Clay",
-      description: response.responseSnippet
-        ? "The webhook accepted the payload."
-        : "The current page was delivered successfully.",
-      tone: "default",
-    })
-    toast.success("Sent to Clay", {
-      description: response.message,
-    })
-    await load(selectedWebhook.id)
   }
 
   function setFieldValue(fieldId: string, value: WebhookFormValues[string]) {
@@ -378,52 +393,6 @@ function PopupField({
     )
   }
 
-  if (field.type === "multi_select") {
-    const selectedValues = Array.isArray(value) ? value : []
-
-    return (
-      <FieldSet>
-        <FieldLegend>{field.label}{star}</FieldLegend>
-        <ToggleGroup
-          className="flex w-full flex-wrap gap-2 rounded-2xl border p-3"
-          onValueChange={(nextValue) => onChange(nextValue)}
-          type="multiple"
-          value={selectedValues}
-          variant="outline"
-        >
-          {field.options.map((option) => (
-            <ToggleGroupItem key={option} value={option}>
-              {option}
-            </ToggleGroupItem>
-          ))}
-        </ToggleGroup>
-        {error ? <FieldError>{error}</FieldError> : null}
-      </FieldSet>
-    )
-  }
-
-  if (field.type === "multiple_choice") {
-    return (
-      <FieldSet>
-        <FieldLegend>{field.label}{star}</FieldLegend>
-        <ToggleGroup
-          className="flex w-full flex-wrap gap-2 rounded-2xl border p-3"
-          onValueChange={(nextValue) => onChange(nextValue)}
-          type="single"
-          value={typeof value === "string" ? value : ""}
-          variant="outline"
-        >
-          {field.options.map((option) => (
-            <ToggleGroupItem key={option} value={option}>
-              {option}
-            </ToggleGroupItem>
-          ))}
-        </ToggleGroup>
-        {error ? <FieldError>{error}</FieldError> : null}
-      </FieldSet>
-    )
-  }
-
   if (field.type === "dropdown") {
     return (
       <Field data-invalid={Boolean(error) || undefined}>
@@ -444,150 +413,6 @@ function PopupField({
         </Select>
         <FieldError>{error}</FieldError>
       </Field>
-    )
-  }
-
-  if (field.type === "matrix") {
-    const matrixValue =
-      value && typeof value === "object" && !Array.isArray(value) ? value : {}
-
-    return (
-      <FieldSet>
-        <FieldLegend>{field.label}{star}</FieldLegend>
-        <div className="flex flex-col gap-3 rounded-2xl border p-3">
-          {field.rows.map((row) => (
-            <Field key={row}>
-              <FieldLabel htmlFor={`${field.id}-${row}`}>{row}</FieldLabel>
-              <Select
-                onValueChange={(nextValue) =>
-                  onChange({
-                    ...matrixValue,
-                    [row]: nextValue,
-                  })
-                }
-                value={typeof matrixValue[row] === "string" ? matrixValue[row] : ""}
-              >
-                <SelectTrigger id={`${field.id}-${row}`}>
-                  <SelectValue placeholder="Choose a response" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    {field.columns.map((column) => (
-                      <SelectItem key={column} value={column}>
-                        {column}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </Field>
-          ))}
-        </div>
-        {error ? <FieldError>{error}</FieldError> : null}
-      </FieldSet>
-    )
-  }
-
-  if (field.type === "rating") {
-    return (
-      <FieldSet>
-        <FieldLegend>{field.label}{star}</FieldLegend>
-        <ToggleGroup
-          className="flex w-full flex-wrap gap-2 rounded-2xl border p-3"
-          onValueChange={(nextValue) => onChange(nextValue)}
-          type="single"
-          value={typeof value === "string" ? value : ""}
-          variant="outline"
-        >
-          {Array.from({ length: field.max }, (_, index) => {
-            const step = String(index + 1)
-
-            return (
-              <ToggleGroupItem key={step} value={step}>
-                <StarIcon data-icon="inline-start" />
-                {step}
-              </ToggleGroupItem>
-            )
-          })}
-        </ToggleGroup>
-        {error ? <FieldError>{error}</FieldError> : null}
-      </FieldSet>
-    )
-  }
-
-  if (field.type === "linear_scale") {
-    const hasLabels = Boolean(field.minLabel || field.maxLabel)
-
-    return (
-      <FieldSet>
-        <FieldLegend>{field.label}{star}</FieldLegend>
-        {hasLabels && (
-          <FieldDescription>
-            {field.minLabel || field.min} to {field.maxLabel || field.max}
-          </FieldDescription>
-        )}
-        <ToggleGroup
-          className="flex w-full flex-wrap gap-2 rounded-2xl border p-3"
-          onValueChange={(nextValue) => onChange(nextValue)}
-          type="single"
-          value={typeof value === "string" ? value : ""}
-          variant="outline"
-        >
-          {Array.from({ length: field.max - field.min + 1 }, (_, index) => {
-            const step = String(field.min + index)
-            return (
-              <ToggleGroupItem key={step} value={step}>
-                {step}
-              </ToggleGroupItem>
-            )
-          })}
-        </ToggleGroup>
-        {error ? <FieldError>{error}</FieldError> : null}
-      </FieldSet>
-    )
-  }
-
-  if (field.type === "ranking") {
-    const rankingValue =
-      Array.isArray(value) && value.length > 0 ? value : field.options
-
-    return (
-      <FieldSet>
-        <FieldLegend>{field.label}{star}</FieldLegend>
-        <div className="flex flex-col gap-2 rounded-2xl border p-3">
-          {rankingValue.map((option, index) => (
-            <div className="flex items-center justify-between gap-3 rounded-xl border px-3 py-2" key={option}>
-              <div className="flex min-w-0 flex-col">
-                <span className="text-sm font-medium">{option}</span>
-                <span className="text-xs text-muted-foreground">Position {index + 1}</span>
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  aria-label={`Move ${option} up`}
-                  disabled={index === 0}
-                  onClick={() => onChange(moveArrayItem(rankingValue, index, index - 1))}
-                  size="icon-sm"
-                  type="button"
-                  variant="outline"
-                >
-                  <ArrowUpIcon />
-                </Button>
-                <Button
-                  aria-label={`Move ${option} down`}
-                  disabled={index === rankingValue.length - 1}
-                  onClick={() => onChange(moveArrayItem(rankingValue, index, index + 1))}
-                  size="icon-sm"
-                  type="button"
-                  variant="outline"
-                >
-                  <ArrowDownIcon />
-                </Button>
-              </div>
-            </div>
-          ))}
-        </div>
-        {error ? <FieldError>{error}</FieldError> : null}
-      </FieldSet>
     )
   }
 
@@ -664,24 +489,13 @@ function getInputType(field: WebhookField) {
       return "number"
     case "email":
       return "email"
-    case "phone":
-      return "tel"
     case "link":
       return "url"
     case "date":
       return "date"
-    case "time":
-      return "time"
     default:
       return "text"
   }
-}
-
-function moveArrayItem(values: string[], fromIndex: number, toIndex: number) {
-  const next = [...values]
-  const [item] = next.splice(fromIndex, 1)
-  next.splice(toIndex, 0, item)
-  return next
 }
 
 async function getCurrentTab() {

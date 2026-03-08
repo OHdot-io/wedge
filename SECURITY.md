@@ -14,7 +14,7 @@
 - HTTPS-only webhook URLs.
 - Optional authentication token per webhook.
 - Explicit field-by-field payload configuration in settings.
-- Minimal permissions (`storage`, `activeTab`, `contextMenus`).
+- Minimal permissions (`storage`, `activeTab`).
 
 ## Operational best practices
 - Rotate Clay auth tokens regularly.

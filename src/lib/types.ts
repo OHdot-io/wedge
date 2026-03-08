@@ -22,24 +22,13 @@ export type BasicFieldType =
   | "long_text"
   | "number"
   | "email"
-  | "phone"
   | "link"
-  | "signature"
   | "date"
-  | "time"
-
-export type ChoiceSingleFieldType = "multiple_choice" | "dropdown"
-export type ChoiceMultiFieldType = "multi_select"
 
 export type CustomFieldType =
   | BasicFieldType
-  | ChoiceSingleFieldType
-  | ChoiceMultiFieldType
   | "checkbox"
-  | "matrix"
-  | "rating"
-  | "linear_scale"
-  | "ranking"
+  | "dropdown"
 
 export interface BaseWebhookField {
   id: string
@@ -58,16 +47,10 @@ export interface BasicWebhookField extends BaseWebhookField {
   defaultValue: string
 }
 
-export interface ChoiceSingleWebhookField extends BaseWebhookField {
-  type: ChoiceSingleFieldType
+export interface DropdownWebhookField extends BaseWebhookField {
+  type: "dropdown"
   options: string[]
   defaultValue: string
-}
-
-export interface ChoiceMultiWebhookField extends BaseWebhookField {
-  type: ChoiceMultiFieldType
-  options: string[]
-  defaultValue: string[]
 }
 
 export interface CheckboxWebhookField extends BaseWebhookField {
@@ -75,44 +58,11 @@ export interface CheckboxWebhookField extends BaseWebhookField {
   defaultValue: boolean
 }
 
-export interface MatrixWebhookField extends BaseWebhookField {
-  type: "matrix"
-  rows: string[]
-  columns: string[]
-  defaultValue: Record<string, string>
-}
-
-export interface RatingWebhookField extends BaseWebhookField {
-  type: "rating"
-  max: number
-  defaultValue: string
-}
-
-export interface LinearScaleWebhookField extends BaseWebhookField {
-  type: "linear_scale"
-  min: number
-  max: number
-  minLabel: string
-  maxLabel: string
-  defaultValue: string
-}
-
-export interface RankingWebhookField extends BaseWebhookField {
-  type: "ranking"
-  options: string[]
-  defaultValue: string[]
-}
-
 export type WebhookField =
   | BuiltinWebhookField
   | BasicWebhookField
-  | ChoiceSingleWebhookField
-  | ChoiceMultiWebhookField
+  | DropdownWebhookField
   | CheckboxWebhookField
-  | MatrixWebhookField
-  | RatingWebhookField
-  | LinearScaleWebhookField
-  | RankingWebhookField
 
 export type WebhookFieldDraft = WebhookField
 
@@ -167,8 +117,7 @@ export interface PageSnapshot {
   context: PageContext
 }
 
-export type MatrixFieldValue = Record<string, string>
-export type WebhookFieldValue = string | boolean | string[] | MatrixFieldValue
+export type WebhookFieldValue = string | boolean
 export type WebhookFormValues = Record<string, WebhookFieldValue | undefined>
 
 export interface AppState {

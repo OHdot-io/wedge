@@ -236,27 +236,34 @@ export function OptionsApp() {
   async function load(preferredEditor?: EditorState) {
     setIsLoading(true)
 
-    const state = await getAppState()
-    const nextEditorState = resolveEditorState(state, preferredEditor)
-    const nextWebhook =
-      nextEditorState.mode === "edit"
-        ? state.webhooks.find((webhook) => webhook.id === nextEditorState.webhookId) ?? null
-        : null
+    try {
+      const state = await getAppState()
+      const nextEditorState = resolveEditorState(state, preferredEditor)
+      const nextWebhook =
+        nextEditorState.mode === "edit"
+          ? state.webhooks.find((webhook) => webhook.id === nextEditorState.webhookId) ?? null
+          : null
 
-    startTransition(() => {
-      setAppState(state)
-      setEditorState(nextEditorState)
-      setWebhookDraft(
-        nextWebhook
-          ? toWebhookDraft(nextWebhook)
-          : createEmptyWebhookDraft(state.webhooks.length === 0)
-      )
-      setFieldDrafts(nextWebhook ? cloneFields(nextWebhook.fields) : createDefaultWebhookFields())
-      setFieldErrors({})
-      setFieldConfigError(null)
-      setImportError(null)
+      startTransition(() => {
+        setAppState(state)
+        setEditorState(nextEditorState)
+        setWebhookDraft(
+          nextWebhook
+            ? toWebhookDraft(nextWebhook)
+            : createEmptyWebhookDraft(state.webhooks.length === 0)
+        )
+        setFieldDrafts(nextWebhook ? cloneFields(nextWebhook.fields) : createDefaultWebhookFields())
+        setFieldErrors({})
+        setFieldConfigError(null)
+        setImportError(null)
+        setIsLoading(false)
+      })
+    } catch {
       setIsLoading(false)
-    })
+      toast.error("Failed to load settings", {
+        description: "Reload the page to try again.",
+      })
+    }
   }
 
   function openCreateEditor() {
@@ -405,6 +412,13 @@ export function OptionsApp() {
 
   async function handleImportFileChange(file: File | null) {
     if (!file) {
+      return
+    }
+
+    const MAX_IMPORT_FILE_SIZE = 512 * 1024
+    if (file.size > MAX_IMPORT_FILE_SIZE) {
+      setImportError("Import file is too large. Keep it under 512 KB.")
+      setImportOpen(true)
       return
     }
 
@@ -1249,7 +1263,7 @@ function renderFieldConfiguration(
     )
   }
 
-  if (field.type === "ranking") {
+  if (field.type === "dropdown") {
     return (
       <Field>
         <FieldLabel htmlFor={`${field.id}-options`}>Options</FieldLabel>
@@ -1258,166 +1272,16 @@ function renderFieldConfiguration(
           onChange={(event) => {
             const nextOptions = linesToValues(event.currentTarget.value)
 
-            onUpdate(field.id, () => ({
-              ...field,
+            onUpdate(field.id, (current) => ({
+              ...current,
               options: nextOptions,
-              defaultValue: nextOptions.filter((value) => value.trim().length > 0),
-            }))
+            } as WebhookFieldDraft))
           }}
           rows={6}
           value={field.options.join("\n")}
         />
         <FieldDescription>One option per line.</FieldDescription>
       </Field>
-    )
-  }
-
-  if (field.type === "multiple_choice" || field.type === "dropdown") {
-    return (
-      <Field>
-        <FieldLabel htmlFor={`${field.id}-options`}>Options</FieldLabel>
-        <Textarea
-          id={`${field.id}-options`}
-          onChange={(event) => {
-            const nextOptions = linesToValues(event.currentTarget.value)
-
-            onUpdate(field.id, () => ({
-              ...field,
-              options: nextOptions,
-            }))
-          }}
-          rows={6}
-          value={field.options.join("\n")}
-        />
-        <FieldDescription>One option per line.</FieldDescription>
-      </Field>
-    )
-  }
-
-  if (field.type === "multi_select") {
-    return (
-      <Field>
-        <FieldLabel htmlFor={`${field.id}-options`}>Options</FieldLabel>
-        <Textarea
-          id={`${field.id}-options`}
-          onChange={(event) => {
-            const nextOptions = linesToValues(event.currentTarget.value)
-
-            onUpdate(field.id, () => ({
-              ...field,
-              options: nextOptions,
-            }))
-          }}
-          rows={6}
-          value={field.options.join("\n")}
-        />
-        <FieldDescription>One option per line.</FieldDescription>
-      </Field>
-    )
-  }
-
-  if (field.type === "matrix") {
-    return (
-      <div className="grid gap-4 md:grid-cols-2">
-        <Field>
-          <FieldLabel htmlFor={`${field.id}-rows`}>Rows</FieldLabel>
-          <Textarea
-            id={`${field.id}-rows`}
-            onChange={(event) => {
-              const value = event.currentTarget.value
-              onUpdate(field.id, () => ({ ...field, rows: linesToValues(value) }))
-            }}
-            rows={6}
-            value={field.rows.join("\n")}
-          />
-          <FieldDescription>One matrix row per line.</FieldDescription>
-        </Field>
-        <Field>
-          <FieldLabel htmlFor={`${field.id}-columns`}>Columns</FieldLabel>
-          <Textarea
-            id={`${field.id}-columns`}
-            onChange={(event) => {
-              const value = event.currentTarget.value
-              onUpdate(field.id, () => ({ ...field, columns: linesToValues(value) }))
-            }}
-            rows={6}
-            value={field.columns.join("\n")}
-          />
-          <FieldDescription>One response option per line.</FieldDescription>
-        </Field>
-      </div>
-    )
-  }
-
-  if (field.type === "rating") {
-    return (
-      <Field>
-        <FieldLabel htmlFor={`${field.id}-max`}>Maximum rating</FieldLabel>
-        <Input
-          id={`${field.id}-max`}
-          min={2}
-          onChange={(event) => {
-            const value = event.currentTarget.value
-            onUpdate(field.id, () => ({ ...field, max: Number(value || 0) }))
-          }}
-          type="number"
-          value={field.max}
-        />
-        <FieldDescription>Choose how many rating steps to show in the popup.</FieldDescription>
-      </Field>
-    )
-  }
-
-  if (field.type === "linear_scale") {
-    return (
-      <div className="grid gap-4 md:grid-cols-2">
-        <Field>
-          <FieldLabel htmlFor={`${field.id}-min`}>Minimum value</FieldLabel>
-          <Input
-            id={`${field.id}-min`}
-            onChange={(event) => {
-              const value = event.currentTarget.value
-              onUpdate(field.id, () => ({ ...field, min: Number(value || 0) }))
-            }}
-            type="number"
-            value={field.min}
-          />
-        </Field>
-        <Field>
-          <FieldLabel htmlFor={`${field.id}-max`}>Maximum value</FieldLabel>
-          <Input
-            id={`${field.id}-max`}
-            onChange={(event) => {
-              const value = event.currentTarget.value
-              onUpdate(field.id, () => ({ ...field, max: Number(value || 0) }))
-            }}
-            type="number"
-            value={field.max}
-          />
-        </Field>
-        <Field>
-          <FieldLabel htmlFor={`${field.id}-minLabel`}>Minimum label</FieldLabel>
-          <Input
-            id={`${field.id}-minLabel`}
-            onChange={(event) => {
-              const value = event.currentTarget.value
-              onUpdate(field.id, () => ({ ...field, minLabel: value }))
-            }}
-            value={field.minLabel}
-          />
-        </Field>
-        <Field>
-          <FieldLabel htmlFor={`${field.id}-maxLabel`}>Maximum label</FieldLabel>
-          <Input
-            id={`${field.id}-maxLabel`}
-            onChange={(event) => {
-              const value = event.currentTarget.value
-              onUpdate(field.id, () => ({ ...field, maxLabel: value }))
-            }}
-            value={field.maxLabel}
-          />
-        </Field>
-      </div>
     )
   }
 
@@ -1530,7 +1394,7 @@ function downloadJson(filename: string, content: string) {
   link.href = url
   link.download = filename
   link.click()
-  URL.revokeObjectURL(url)
+  setTimeout(() => URL.revokeObjectURL(url), 60_000)
 }
 
 function slugify(input: string) {
