@@ -50,7 +50,7 @@ npm test
 src/
   popup/          # Popup UI (React)
   options/        # Settings/options page (React)
-  background.ts   # Service worker (webhook delivery, context menus)
+  background.ts   # Service worker (webhook delivery)
   contentScript.ts # Page metadata extraction
   lib/            # Shared types, storage, validation, utilities
   components/     # Reusable UI components (shadcn/ui)

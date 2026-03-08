@@ -2,91 +2,13 @@ import type { BackgroundRequest, BackgroundResponse, DeliveryInput } from "./lib
 import {
   CLAY_WEBHOOK_AUTH_HEADER,
   getAppState,
-  getHostname,
   markWebhookTestResult,
   markWebhookUsed,
   parseAndValidateUrl,
   pushHistory,
   randomId,
 } from "./lib/storage"
-import {
-  buildPayloadFromValues,
-  createInitialFormValues,
-  validateWebhookForm,
-} from "./lib/webhook-fields"
-import type { ErrorCode, HistoryEntry, PageSnapshot, WebhookConfig } from "./lib/types"
-
-const MENU_IDS = {
-  SEND_PAGE: "wedge.sendPage",
-  SEND_SELECTION: "wedge.sendSelection",
-  SEND_LINK: "wedge.sendLink",
-} as const
-
-chrome.runtime.onInstalled.addListener(() => {
-  chrome.contextMenus.create({
-    id: MENU_IDS.SEND_PAGE,
-    title: "Wedge: Send Current Page",
-    contexts: ["page"],
-  })
-
-  chrome.contextMenus.create({
-    id: MENU_IDS.SEND_SELECTION,
-    title: "Wedge: Send Selected Text",
-    contexts: ["selection"],
-  })
-
-  chrome.contextMenus.create({
-    id: MENU_IDS.SEND_LINK,
-    title: "Wedge: Send Link URL",
-    contexts: ["link"],
-  })
-})
-
-chrome.contextMenus.onClicked.addListener(async (info, tab) => {
-  const { webhooks } = await getAppState()
-  const webhook = webhooks.find((entry) => entry.isDefault) ?? webhooks[0]
-
-  if (!webhook) {
-    await pushHistory({
-      id: randomId(),
-      at: new Date().toISOString(),
-      status: "error",
-      webhookName: "(none)",
-      message: "Add a webhook before using context menu sends.",
-      context: String(info.menuItemId),
-      errorCode: "CONFIG_MISSING",
-      pageTitle: tab?.title ?? "",
-      pageHostname: getHostname(info.linkUrl || tab?.url),
-    })
-    return
-  }
-
-  const page = buildContextMenuSnapshot(info, tab)
-  const values = createInitialFormValues(webhook.fields, page)
-  const fieldErrors = validateWebhookForm(webhook.fields, values)
-
-  if (Object.keys(fieldErrors).length > 0) {
-    await pushHistory(
-      createHistoryEntry({
-        webhook,
-        status: "error",
-        message: "This webhook requires extra fields, so it has to be sent from the popup.",
-        pageTitle: page.title,
-        pageHostname: page.hostname,
-        requestId: randomId(),
-        errorCode: "FIELD_REQUIRED",
-      })
-    )
-    return
-  }
-
-  await deliverAndTrack({
-    webhook,
-    payload: buildPayloadFromValues(webhook.fields, values),
-    pageTitle: page.title,
-    pageHostname: page.hostname,
-  }).catch(() => undefined)
-})
+import type { ErrorCode, HistoryEntry, WebhookConfig } from "./lib/types"
 
 chrome.runtime.onMessage.addListener((message: BackgroundRequest, sender, sendResponse) => {
   if (sender.id !== chrome.runtime.id) {
@@ -288,27 +210,6 @@ async function deliverAndTrack(input: DeliveryInput): Promise<BackgroundResponse
       error: message,
       errorCode: "NETWORK_ERROR",
     }
-  }
-}
-
-function buildContextMenuSnapshot(
-  info: chrome.contextMenus.OnClickData,
-  tab?: chrome.tabs.Tab
-): PageSnapshot {
-  const url = info.linkUrl || tab?.url || ""
-
-  return {
-    url,
-    title: tab?.title || "",
-    hostname: getHostname(url),
-    context: {
-      selectedText: info.selectionText || "",
-      meta: {
-        description: "",
-        canonical: url,
-        ogTitle: tab?.title || "",
-      },
-    },
   }
 }
 

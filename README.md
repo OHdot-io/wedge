@@ -42,7 +42,6 @@ Then load `dist/` as an unpacked extension (steps 3-5 above).
 - **Page autofill** — automatically captures URL, title, description, canonical URL, og:title, selected text, and hostname
 - **Custom fields** — add text, number, email, phone, date, dropdown, multi-select, rating, matrix, ranking, and more
 - **Multi-webhook support** — configure multiple Clay webhooks with independent payload schemas
-- **Context menus** — right-click to quickly send the current page, selected text, or a link URL
 - **Settings workspace** — full webhook CRUD, payload field editor, drag-and-drop ordering, and test sends
 - **Import / export** — share webhook configurations as JSON across your team
 - **Activity history** — local log of sent and failed deliveries with timestamps and error details
@@ -72,7 +71,7 @@ Built with React 19, TypeScript, Tailwind CSS 4, and shadcn/ui. Uses Vite with t
 src/
   popup/           Popup UI
   options/         Settings page
-  background.ts    Service worker (delivery, context menus)
+  background.ts    Service worker (webhook delivery)
   contentScript.ts Page metadata extraction
   lib/             Types, storage, validation, utilities
   components/      Reusable UI components

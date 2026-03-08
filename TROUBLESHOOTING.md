@@ -18,7 +18,3 @@
 
 ## "Payload too large"
 - Reduce payload preset scope or increase max payload bytes in settings.
-
-## Nothing happens from context menu
-- Ensure at least one destination exists.
-- Ensure active page is HTTPS.

@@ -5,7 +5,7 @@ export default defineManifest({
   name: "Wedge",
   description: "Chrome extension for sending data to Clay.",
   version: "0.2.0",
-  permissions: ["storage", "activeTab", "contextMenus"],
+  permissions: ["storage", "activeTab"],
   host_permissions: ["https://*/*"],
   icons: {
     16: "src/assets/icon-16.png",
