@@ -262,3 +262,11 @@ export function toSnakeCase(input: string) {
     .replace(/^_+|_+$/g, "")
 }
 
+export function toSnakeCaseLive(input: string) {
+  return input
+    .toLowerCase()
+    .replace(/[^a-z0-9_]+/g, "_")
+    .replace(/_{2,}/g, "_")
+    .replace(/^_+/, "")
+}
+

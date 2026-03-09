@@ -128,6 +128,7 @@ import {
   getNextCustomFieldKey,
   getUnusedBuiltinKeys,
   toSnakeCase,
+  toSnakeCaseLive,
 } from "@/lib/webhook-fields"
 import type {
   AppState,
@@ -1201,7 +1202,10 @@ function FieldBuilderCard({
                   id={`${field.id}-key`}
                   onChange={(event) => {
                     const value = event.currentTarget.value
-                    onUpdate(field.id, (current) => ({ ...current, key: toSnakeCase(value) }))
+                    onUpdate(field.id, (current) => ({ ...current, key: toSnakeCaseLive(value) }))
+                  }}
+                  onBlur={() => {
+                    onUpdate(field.id, (current) => ({ ...current, key: toSnakeCase(current.key) }))
                   }}
                   value={field.key}
                 />

@@ -83,6 +83,7 @@ export function PopupApp() {
   const [previewOpen, setPreviewOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [isSending, setIsSending] = useState(false)
+  const [hasAttemptedSend, setHasAttemptedSend] = useState(false)
 
   useEffect(() => {
     void load()
@@ -153,6 +154,7 @@ export function PopupApp() {
     setSelectedWebhookId(value)
     setFormValues(createInitialFormValues(nextWebhook.fields, page))
     setInlineStatus(null)
+    setHasAttemptedSend(false)
     await saveUiState({ lastSelectedWebhookId: value })
   }
 
@@ -160,6 +162,8 @@ export function PopupApp() {
     if (!selectedWebhook) {
       return
     }
+
+    setHasAttemptedSend(true)
 
     const errors = validateWebhookForm(selectedWebhook.fields, formValues)
     if (Object.keys(errors).length > 0) {
@@ -314,7 +318,7 @@ export function PopupApp() {
               <FieldGroup>
                 {selectedWebhook.fields.map((field) => (
                   <PopupField
-                    error={formErrors[field.id]}
+                    error={hasAttemptedSend ? formErrors[field.id] : undefined}
                     field={field}
                     key={field.id}
                     onChange={(value) => setFieldValue(field.id, value)}
