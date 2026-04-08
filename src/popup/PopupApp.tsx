@@ -245,7 +245,7 @@ export function PopupApp() {
       >
         Skip to main content
       </a>
-      <main className="flex min-h-dvh w-[392px] flex-col gap-5 bg-background p-4" id="main-content">
+      <main className="isolate flex min-h-dvh w-[392px] flex-col gap-5 bg-background p-4" id="main-content">
         {isLoading ? (
           <PopupLoadingState />
         ) : !hasWebhooks ? (
@@ -302,12 +302,10 @@ export function PopupApp() {
                 <FieldLabel>Active page</FieldLabel>
                 <div className="overflow-hidden rounded-lg border bg-muted/30 p-3">
                   <div className="flex items-start gap-3">
-                    <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted">
-                      <GlobeIcon className="size-4" aria-hidden="true" />
-                    </div>
+                    <GlobeIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                     <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                       <p className="truncate text-sm font-medium">{page.title || "No active page"}</p>
-                      <p className="truncate text-xs text-muted-foreground">
+                      <p className="truncate text-sm text-muted-foreground">
                         {page.hostname || "Waiting for an active browser tab"}
                       </p>
                     </div>
@@ -335,12 +333,12 @@ export function PopupApp() {
                 <Button className="w-full justify-between" type="button" variant="ghost">
                   <span className="text-xs text-muted-foreground">JSON preview</span>
                   <ChevronDownIcon
-                    className={cn("size-3.5 text-muted-foreground transition-transform", previewOpen && "rotate-180")}
+                    className={cn("size-4 text-muted-foreground transition-transform", previewOpen && "rotate-180")}
                   />
                 </Button>
               </CollapsibleTrigger>
               <CollapsibleContent className="pt-2">
-                <pre className="max-h-52 overflow-auto rounded-lg border bg-muted/40 p-3 text-xs leading-relaxed"><code>{previewJson}</code></pre>
+                <pre className="max-h-52 overflow-auto rounded-lg border bg-muted/40 p-3 text-xs/5"><code>{previewJson}</code></pre>
               </CollapsibleContent>
             </Collapsible>
 

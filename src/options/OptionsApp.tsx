@@ -606,7 +606,7 @@ export function OptionsApp() {
         Skip to main content
       </a>
       <main
-        className="mx-auto flex min-h-screen w-full max-w-3xl flex-col gap-8 px-4 py-8 sm:px-6"
+        className="isolate mx-auto flex min-h-dvh w-full max-w-3xl flex-col gap-8 px-4 py-8 sm:px-6"
         id="main-content"
       >
         {isLoading ? (
@@ -798,8 +798,8 @@ function WebhooksIndexView({
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div className="flex flex-col gap-1">
             <BrandLockup className="mb-1" />
-            <h1 className="text-xl font-semibold tracking-tight">Webhooks</h1>
-            <p className="text-sm text-muted-foreground">
+            <h1 className="text-xl font-semibold tracking-tight text-balance">Webhooks</h1>
+            <p className="text-sm text-pretty text-muted-foreground">
               Manage webhooks to send to Clay tables from the extension.
             </p>
           </div>
@@ -825,9 +825,19 @@ function WebhooksIndexView({
                 Paste one config or a <code>{`{"webhooks": [...]}`}</code> object to add multiple webhooks at once.
               </CardDescription>
               <CardAction>
-                <Button aria-label="Close import" onClick={onOpenImport} size="icon-sm" type="button" variant="ghost">
-                  <XIcon />
-                </Button>
+                <div className="flex items-center gap-1.5">
+                  <Button disabled={isImporting || importText.trim().length === 0} onClick={onImport} size="sm">
+                    {isImporting ? (
+                      <LoaderCircleIcon className="animate-spin" data-icon="inline-start" />
+                    ) : (
+                      <UploadIcon data-icon="inline-start" />
+                    )}
+                    Import
+                  </Button>
+                  <Button aria-label="Close import" onClick={onOpenImport} size="icon-sm" type="button" variant="ghost">
+                    <XIcon />
+                  </Button>
+                </div>
               </CardAction>
             </CardHeader>
             <CardContent>
@@ -839,7 +849,7 @@ function WebhooksIndexView({
                   </Alert>
                 ) : null}
                 <button
-                  className="flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed py-10 text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground data-[dragover=true]:border-primary/40 data-[dragover=true]:text-foreground"
+                  className="flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed py-10 text-muted-foreground hover:border-primary/40 hover:text-foreground data-[dragover=true]:border-primary/40 data-[dragover=true]:text-foreground"
                   onClick={() => fileInputRef.current?.click()}
                   onDragOver={(event) => {
                     event.preventDefault()
@@ -858,7 +868,7 @@ function WebhooksIndexView({
                   }}
                   type="button"
                 >
-                  <FileJsonIcon className="size-8" />
+                  <FileJsonIcon className="size-5" />
                   <span className="text-sm font-medium">Upload JSON file</span>
                   <span className="text-xs text-muted-foreground">
                     Or drag & drop a file, or paste JSON below
@@ -874,16 +884,6 @@ function WebhooksIndexView({
                 />
               </FieldGroup>
             </CardContent>
-            <CardFooter className="justify-end gap-2">
-              <Button disabled={isImporting || importText.trim().length === 0} onClick={onImport}>
-                {isImporting ? (
-                  <LoaderCircleIcon className="animate-spin" data-icon="inline-start" />
-                ) : (
-                  <UploadIcon data-icon="inline-start" />
-                )}
-                Import
-              </Button>
-            </CardFooter>
           </Card>
         ) : null}
 
@@ -925,7 +925,7 @@ function WebhooksIndexView({
               </h2>
             </CardTitle>
             <CardDescription>
-              Add fields that identify you as the sender. These values are included under a <code className="rounded bg-muted px-1 py-0.5 text-[11px]">profile</code> key with every webhook you send.
+              Add fields that identify you as the sender. These values are included under a <code className="rounded bg-muted px-1 py-0.5 text-xs">profile</code> key with every webhook you send.
             </CardDescription>
             <CardAction>
               <DropdownMenu>
@@ -1062,8 +1062,8 @@ function WebhookEditorView({
         </Breadcrumb>
 
         <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-semibold tracking-tight">{pageTitle}</h1>
-          <p className="max-w-2xl text-sm text-muted-foreground">{pageDescription}</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-balance">{pageTitle}</h1>
+          <p className="max-w-2xl text-sm text-pretty text-muted-foreground">{pageDescription}</p>
         </div>
       </div>
 
@@ -1198,7 +1198,7 @@ function WebhookEditorView({
 
       <div className="flex flex-col gap-3">
         <h2 className="text-sm font-medium">Preview JSON</h2>
-        <pre className="overflow-auto rounded-lg border bg-muted/40 p-4 text-xs leading-relaxed"><code>{previewJson}</code></pre>
+        <pre className="overflow-auto rounded-lg border bg-muted/40 p-4 text-xs/5"><code>{previewJson}</code></pre>
         <p className="text-xs text-muted-foreground">Built-in fields use example values. Custom fields start empty.</p>
       </div>
 
@@ -1313,7 +1313,7 @@ function FieldBuilderCard({
               {...attributes}
               {...listeners}
             >
-              <GripVerticalIcon className="size-5" />
+              <GripVerticalIcon className="size-4" />
             </button>
             {field.label || "Untitled field"}
             {field.type === "builtin" ? (
