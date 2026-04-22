@@ -19,8 +19,8 @@
 This is an OH.io-internal fork of [eliasstravik/wedge](https://github.com/eliasstravik/wedge) by Elias Stravik — original concept, architecture, and security model are his. We maintain the upstream link and contribute fixes back where they make sense.
 
 **Our delta vs upstream:**
-- `content_scripts` → `chrome.scripting.executeScript` on click (narrower permission story: extension only reads page DOM when the BDR clicks, not on every HTTPS page visit)
-- Dropped `host_permissions: ["https://*/*"]`, added `scripting` permission, kept `activeTab`
+- `content_scripts` → `chrome.scripting.executeScript` on click. Extension no longer runs a listener on every HTTPS page — page DOM is only read when the BDR clicks the icon. Added `scripting` permission, kept `activeTab`.
+- `host_permissions: ["https://*/*"]` retained because the service worker needs it to POST to arbitrary webhook URLs (Clay, etc). Outbound fetches only fire when the BDR clicks send.
 - Manifest name → "Wedge for OH.io"
 
 Config distribution is file-based — a CSV-driven generator lives in [`OHdot-io/oh.io-internal`](https://github.com/OHdot-io/oh.io-internal) under `ohio-internal/public-projects/wedge-configs/`. BDRs import the generated JSON via Settings → Import.

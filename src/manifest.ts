@@ -6,6 +6,7 @@ export default defineManifest({
   description: "Chrome extension for sending page context to Clay for BDR self-prospecting.",
   version: "1.0.8",
   permissions: ["storage", "activeTab", "scripting"],
+  host_permissions: ["https://*/*"],
   icons: {
     16: "src/assets/icon-16.png",
     32: "src/assets/icon-32.png",
