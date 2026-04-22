@@ -535,15 +535,32 @@ async function getCurrentTab() {
   return tabs[0] ?? null
 }
 
+function capturePageContext(): PageContext {
+  const canonicalEl = document.querySelector<HTMLLinkElement>("link[rel='canonical']")
+  const descriptionEl = document.querySelector<HTMLMetaElement>("meta[name='description']")
+  const ogTitleEl = document.querySelector<HTMLMetaElement>("meta[property='og:title']")
+
+  return {
+    selectedText: String(window.getSelection?.() || "").trim(),
+    meta: {
+      canonical: canonicalEl?.href || "",
+      description: descriptionEl?.content || "",
+      ogTitle: ogTitleEl?.content || "",
+    },
+  }
+}
+
 async function getPageContext(tab: chrome.tabs.Tab | null) {
   if (!tab?.id || !tab.url?.startsWith("https://")) {
     return EMPTY_PAGE_CONTEXT
   }
 
   try {
-    return (await chrome.tabs.sendMessage(tab.id, {
-      type: "wedge/capture",
-    })) as PageContext
+    const results = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: capturePageContext,
+    })
+    return (results[0]?.result as PageContext) ?? EMPTY_PAGE_CONTEXT
   } catch {
     return EMPTY_PAGE_CONTEXT
   }

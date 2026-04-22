@@ -2,11 +2,10 @@ import { defineManifest } from "@crxjs/vite-plugin";
 
 export default defineManifest({
   manifest_version: 3,
-  name: "Wedge",
-  description: "Chrome extension for sending data to Clay.",
+  name: "Wedge for OH.io",
+  description: "Chrome extension for sending page context to Clay for BDR self-prospecting.",
   version: "1.0.8",
-  permissions: ["storage", "activeTab"],
-  host_permissions: ["https://*/*"],
+  permissions: ["storage", "activeTab", "scripting"],
   icons: {
     16: "src/assets/icon-16.png",
     32: "src/assets/icon-32.png",
@@ -28,12 +27,5 @@ export default defineManifest({
   },
   content_security_policy: {
     extension_pages: "script-src 'self'; object-src 'self'"
-  },
-  content_scripts: [
-    {
-      matches: ["https://*/*"],
-      js: ["src/contentScript.ts"],
-      run_at: "document_idle"
-    }
-  ]
+  }
 });

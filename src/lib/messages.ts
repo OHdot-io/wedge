@@ -1,4 +1,4 @@
-import type { ErrorCode, PageContext, WebhookConfig } from "./types"
+import type { ErrorCode, WebhookConfig } from "./types"
 
 export interface BackgroundSuccess {
   ok: true
@@ -28,9 +28,6 @@ export type BackgroundRequest =
       type: "wedge/test-webhook"
       webhookId: string
     }
-
-export type ContentScriptRequest = { type: "wedge/capture" }
-export type ContentScriptResponse = PageContext
 
 export interface DeliveryInput {
   webhook: WebhookConfig

@@ -2,16 +2,28 @@
   <img src="src/assets/brand.png" width="80" alt="Wedge logo" />
 </p>
 
-<h1 align="center">Wedge</h1>
+<h1 align="center">Wedge for OH.io</h1>
 
 <p align="center">
-  Chrome extension for sending data to Clay.
+  Chrome extension for sending page context to Clay for BDR self-prospecting.
 </p>
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT License" /></a>
-  <a href="https://github.com/eliasstravik/wedge/actions/workflows/ci.yml"><img src="https://github.com/eliasstravik/wedge/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
 </p>
+
+---
+
+## Fork notice
+
+This is an OH.io-internal fork of [eliasstravik/wedge](https://github.com/eliasstravik/wedge) by Elias Stravik — original concept, architecture, and security model are his. We maintain the upstream link and contribute fixes back where they make sense.
+
+**Our delta vs upstream:**
+- `content_scripts` → `chrome.scripting.executeScript` on click (narrower permission story: extension only reads page DOM when the BDR clicks, not on every HTTPS page visit)
+- Dropped `host_permissions: ["https://*/*"]`, added `scripting` permission, kept `activeTab`
+- Manifest name → "Wedge for OH.io"
+
+Config distribution is file-based — a CSV-driven generator lives in [`OHdot-io/oh.io-internal`](https://github.com/OHdot-io/oh.io-internal) under `ohio-internal/public-projects/wedge-configs/`. BDRs import the generated JSON via Settings → Import.
 
 ---
 
